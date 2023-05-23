@@ -24,8 +24,8 @@ public class ReservationConsumerEHServiceImpl {
 	
 	public String consumeHotelData(String accessToken, int eventDataSize) throws Exception{
 		long before = System.currentTimeMillis();
-		 //WebClient webConsumerClient = WebClient.builder().baseUrl("https://ehub-sb-poc-ehreservationconsumer.azuremicroservices.io").build();
-		 WebClient webConsumerClient = WebClient.builder().baseUrl("http://localhost:7050").build();
+		 WebClient webConsumerClient = WebClient.builder().baseUrl("https://ehub-sb-poc-ehreservationconsumer.azuremicroservices.io").build();
+		 //WebClient webConsumerClient = WebClient.builder().baseUrl("http://localhost:7050").build();
 		 try {
 			 
 			 ResponseEntity<String> response = webConsumerClient.get()
