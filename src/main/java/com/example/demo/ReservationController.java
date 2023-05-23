@@ -11,7 +11,10 @@ public class ReservationController {
 	@Autowired
 	ReservationDataPublisherToEventHub publisher;
 	
-	@GetMapping("/process")
+	@Autowired
+	ReservationDeltaDataPublisherToEventHub deltaPublisher;
+	
+	@GetMapping("/tca/reservData/process")
 	public String startProcess() throws Exception {
 		String readingReservationDataTime = publisher.transferData();
 		
@@ -20,4 +23,12 @@ public class ReservationController {
 		return readingReservationDataTime;
 	}
 
+	@GetMapping("/valaon/reservDelta/process")
+	public String startavalonProcess() throws Exception {
+		String readingReservationDataTime = deltaPublisher.transferData();
+		
+		
+		
+		return readingReservationDataTime;
+	}
 }

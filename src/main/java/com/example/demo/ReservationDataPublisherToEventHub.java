@@ -17,8 +17,8 @@ public class ReservationDataPublisherToEventHub {
 
 	public String transferData() throws Exception {
 		System.out.println("Fetch hotel data from Blob location");
-		//String hotelData = DownloadHotelDataFromADLS.downloadHotelData();
-		String hotelData = DownloadHotelDataFromBlob.downloadBlobData();
+		String hotelData = DownloadHotelDataFromADLS.downloadHotelData();
+		//String hotelData = DownloadHotelDataFromBlob.downloadBlobData();
 		System.out.println("No of Hotels: " + hotelData.lines().count());
 		System.out.println("Fetch bearer token from login");
 		String bearerToken = tcaReservLoginService.getLoginToken();

@@ -2,6 +2,8 @@ package com.example.demo.service.impl;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Future;
 
 import org.json.simple.JSONObject;
@@ -37,11 +39,14 @@ public class TCAGetReservationsDataServiceImplementation {
 	@Autowired
 	Producer producer;
 
-
+	@Autowired
+	ReservationConsumerEHServiceImpl reservationConsumer;
 	
 	@Async("publisherExecutor")
-	public Future<EventData> getReservationsData( String hotelData) throws WebClientResponseException, Exception {
-		 WebClient webClient = WebClient.builder().baseUrl("https://cs-lab.amr.innsist.tca-ss.com/api").build();
+	public Future<String> getReservationsData( String hotelData) throws WebClientResponseException, Exception {
+		long before = System.currentTimeMillis(); 
+		
+		WebClient webClient = WebClient.builder().baseUrl("https://cs-lab.amr.innsist.tca-ss.com/api").build();
 		
 		System.out.println("Invoking an asynchronous method. " 
 				+ Thread.currentThread().getName());
@@ -57,12 +62,12 @@ public class TCAGetReservationsDataServiceImplementation {
 					                                .accept(MediaType.APPLICATION_JSON, MediaType.ALL).contentType(MediaType.APPLICATION_JSON)
 					                                .bodyValue(req)
 					                                .retrieve()
-					                                .onStatus(status -> (status.value() == 204 || status.value() == 500 || status.value() == 400),clientResponse -> Mono.empty())
-					                                //.onStatus(status -> (status.value() == 204 ),clientResponse -> Mono.empty())
+					                                //.onStatus(status -> (status.value() == 204 || status.value() == 500 || status.value() == 400),clientResponse -> Mono.empty())
+					                                .onStatus(status -> (status.value() == 204 ),clientResponse -> Mono.empty())
 					                                //.onStatus(status -> (status.value() != 204 || status.value() != 200), clientResponse-> clientResponse.createException())
 					                                .toEntity(String.class)
 					                                .retryWhen(Retry.backoff(3, Duration.ofSeconds(5)).doAfterRetry(retrySignal -> {
-						                                System.out.println("Retried TCA Login API: " + retrySignal.totalRetries());
+						                                System.out.println("Retried TCA get list of Reservation API: " + retrySignal.totalRetries());
 					                                  }))
 					                                .block();
 			
@@ -72,19 +77,26 @@ public class TCAGetReservationsDataServiceImplementation {
 			jsonObj.put(BRANDCODE, (String) parsedJsonObject.get(BRANDCODE));
 			jsonObj.put(HOTELCODE, (String) parsedJsonObject.get(HOTELCODE));
 			
-			if(responseEntity.getBody() == null || responseEntity.getStatusCodeValue() == 500) {
+			//if(responseEntity.getBody() == null || responseEntity.getStatusCodeValue() == 500 || responseEntity.getStatusCodeValue() == 400) {
+				if(responseEntity.getBody() == null ) {
 				//jsonObj.put(RESERVATIONDATA, " ");
 				jsonObj=readReservationDataFromLocalFile(jsonObj);
 			}else {
 				
 				jsonObj.put(RESERVATIONDATA, responseEntity.getBody());
 			}
-           
+			List<EventData> eventDataList = new ArrayList<>();
+			eventDataList.add(new EventData(jsonObj.toString()));
 			
-			return new AsyncResult<EventData>(new EventData(jsonObj.toString()));
+			String publishEvents = producer.publishEvents(eventDataList);
+			System.out.println(publishEvents);
+			long after = System.currentTimeMillis(); 
+			String reservationTime = "Time it took for reservation data of hotel code: "+(String) parsedJsonObject.get(HOTELCODE) +" to be published to event hub: " + (after - before) / 1000.0 + " seconds.\n";
+			
+			return new AsyncResult<String>(reservationTime);
 
 		} catch (ParseException e) {
-
+     
 			System.out.println(e.getLocalizedMessage());
 			System.out.println(e.getMessage());
 			System.out.println(e.getCause());
@@ -92,7 +104,7 @@ public class TCAGetReservationsDataServiceImplementation {
 					+ e.getLocalizedMessage();
 			StoreReservExceptionToBlob.updateToLatestFolder(storedMessage, "Reservations",TCAGetReservationsDataServiceImplementation.fileName);
 			StoreReservExceptionToBlob.storingExceptionInArchiveLocation(storedMessage,"Reservations", TCAGetReservationsDataServiceImplementation.fileName);
-			return new AsyncResult<EventData>(null);
+			return new AsyncResult<String>(null);
 		}catch (Exception e) {
 			if (e.getCause() instanceof WebClientResponseException) {
 
@@ -104,7 +116,7 @@ public class TCAGetReservationsDataServiceImplementation {
 						+ cause.getMostSpecificCause() + "Response Body: " + cause.getResponseBodyAsString();
 				StoreReservExceptionToBlob.updateToLatestFolder(storedMessage, "Reservations",TCAGetReservationsDataServiceImplementation.fileName);
 				StoreReservExceptionToBlob.storingExceptionInArchiveLocation(storedMessage,"Reservations", TCAGetReservationsDataServiceImplementation.fileName);
-				return new AsyncResult<EventData>(null);
+				return new AsyncResult<String>(null);
 				
 			} else if (e.getCause() instanceof WebClientRequestException) {
 				WebClientRequestException cause = (WebClientRequestException) e.getCause();
@@ -116,7 +128,7 @@ public class TCAGetReservationsDataServiceImplementation {
 						+ cause.getMostSpecificCause() + "Root Cause: " + cause.getRootCause();
 				StoreReservExceptionToBlob.updateToLatestFolder(storedMessage, "Reservations",TCAGetReservationsDataServiceImplementation.fileName);
 				StoreReservExceptionToBlob.storingExceptionInArchiveLocation(storedMessage,"Reservations", TCAGetReservationsDataServiceImplementation.fileName);
-				return new AsyncResult<EventData>(null);
+				return new AsyncResult<String>(null);
 
 			} else {
 
@@ -127,7 +139,7 @@ public class TCAGetReservationsDataServiceImplementation {
 						+ e.getLocalizedMessage();
 				StoreReservExceptionToBlob.updateToLatestFolder(storedMessage, "Reservations",TCAGetReservationsDataServiceImplementation.fileName);
 				StoreReservExceptionToBlob.storingExceptionInArchiveLocation(storedMessage,"Reservations", TCAGetReservationsDataServiceImplementation.fileName);
-				return new AsyncResult<EventData>(null);
+				return new AsyncResult<String>(null);
 			}
 
 		}

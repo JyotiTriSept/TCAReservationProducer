@@ -1,4 +1,4 @@
-package com.example.demo.service.impl;
+package com.example.demo.service.impl.avalon;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,55 +16,54 @@ import com.azure.messaging.eventhubs.EventData;
 import com.azure.messaging.eventhubs.EventHubClientBuilder;
 import com.azure.messaging.eventhubs.EventHubProducerClient;
 import com.example.demo.producer.Producer;
+import com.example.demo.producer.ReservationDeltaEventHubProducer;
 import com.example.demo.service.TCAGetReservationsDataService;
+import com.example.demo.service.impl.ReservationDeltaConsumerEHServiceImpl;
 
 import reactor.core.publisher.Mono;
 
 @Component
-public class TCAReservationsDataService {
+public class AvalonReservationsDeltaDataService {
 
 	@Autowired
-	TCAGetReservationsDataServiceImplementation tcaSer;
+	AvalonGetReservationsDeltaServiceImplementation avalonSer;
 	
 	@Autowired
-	Producer producer;
+	ReservationDeltaEventHubProducer producer;
 	
 	@Autowired
-	ReservationConsumerEHServiceImpl reservationConsumer;
+	ReservationDeltaConsumerEHServiceImpl reservationConsumer;
 	
 	static List<EventData> eventDataList = new ArrayList<>();
 	
     
-	public String getReservationsData( String hotelData) throws Exception {
+	public String getReservationsData( List<String> hotelList) throws Exception {
 		
 		long before = System.currentTimeMillis();
 		
-		Collection<Future<String>> futures = new ArrayList<Future<String>>();
-		List<String> listOfHotelData = hotelData.lines().collect(Collectors.toList());
+		Collection<Future<EventData>> futures = new ArrayList<Future<EventData>>();
 
-		for (String data : listOfHotelData) {
-			futures.add(tcaSer.getReservationsData( data));
+		for (String data : hotelList) {
+			futures.add(avalonSer.getReservationsData( data));
 		}
 		
-		for (Future<String> future : futures) {
-	        String eventData = future.get();
+		for (Future<EventData> future : futures) {
+	        EventData eventData = future.get();
 	        if(eventData != null) {
-	        	System.out.println(eventData);
+	        	eventDataList.add(eventData);
 	        }
 	    }
 		
-		/*String publishEvents = producer.publishEvents(eventDataList);
+		String publishEvents = producer.publishEvents(eventDataList);
 		System.out.println(publishEvents);
 		long after = System.currentTimeMillis(); 
 		String reservationTime = "Time it took for reservation data of all Hotel Data to be published to event hub: " + (after - before) / 1000.0 + " seconds.\n";
-	    System.out.println(reservationTime);*/
+	    System.out.println(reservationTime);
 	    
-	    String response = reservationConsumer.consumeHotelData(TCALoginServiceImplementation.accessToken, listOfHotelData.size());
+	    String response = reservationConsumer.consumeHotelData();
 	    
-	    long after = System.currentTimeMillis(); 
-	    String reservationTime = "Time it took for reservation data of all Hotel Data to be published to event hub: " + (after - before) / 1000.0 + " seconds.\n";
 	    
-	    return response+ reservationTime;
+	    return reservationTime+response;
 	
 	}
 

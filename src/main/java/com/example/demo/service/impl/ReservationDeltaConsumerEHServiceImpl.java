@@ -1,7 +1,6 @@
 package com.example.demo.service.impl;
 
 import java.time.Duration;
-import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -9,31 +8,24 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
-import com.azure.messaging.eventhubs.EventData;
 import com.example.demo.exception.ReservationDataConsumerApplicationException;
 import com.example.demo.exception.StoreExceptionToBlob;
 
 import reactor.util.retry.Retry;
 
 @Component
-public class ReservationConsumerEHServiceImpl {
+public class ReservationDeltaConsumerEHServiceImpl {
 	private static final String TOTALEVENT="totalEvent";
-	private static final String LOGINTOKEN="loginToken";
-	private static final String BRANDCODE="brand_code";
-	private static final String HOTELCODE="hotel_code";
 	
-	public String consumeHotelData(String accessToken, int eventDataSize) throws Exception{
+	public String consumeHotelData() throws Exception{
 		long before = System.currentTimeMillis();
 		 //WebClient webConsumerClient = WebClient.builder().baseUrl("https://ehub-sb-poc-ehreservationconsumer.azuremicroservices.io").build();
 		 WebClient webConsumerClient = WebClient.builder().baseUrl("http://localhost:7050").build();
 		 try {
 			 
 			 ResponseEntity<String> response = webConsumerClient.get()
-					 .uri(uriBuilder -> uriBuilder.path("/consumer")
-							 .queryParam(TOTALEVENT, eventDataSize)
-							 .queryParam(LOGINTOKEN, accessToken)
-							 //.queryParam(BRANDCODE, brandCode)
-							 //.queryParam(HOTELCODE, hotelCode)
+					 .uri(uriBuilder -> uriBuilder.path("/avalon/resevDelta/consumer")
+							 .queryParam(TOTALEVENT, TCAReservationsDataService.eventDataList.size())
 							 .build())
 					 //.bodyValue(KeyVaultProcessor.getKeyVaultProperties())
 					 .accept()
@@ -41,7 +33,7 @@ public class ReservationConsumerEHServiceImpl {
 					 .toEntity(String.class)
 					 //.timeout(Duration.ofSeconds(5))
 					 .retryWhen(Retry.backoff(3, Duration.ofSeconds(5))
-							 .doAfterRetry(retrySignal->{ System.out.println("Retried for connecting to reservation data consumer applicationendpoint" +
+							 .doAfterRetry(retrySignal->{ System.out.println("Retried for connecting to reservation delta data consumer applicationendpoint" +
 									 retrySignal.totalRetries()); }))
 					 .block();
 			 String res = response.getBody();
