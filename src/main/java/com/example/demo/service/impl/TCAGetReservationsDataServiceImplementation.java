@@ -22,6 +22,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import com.azure.messaging.eventhubs.EventData;
 import com.example.demo.exception.StoreReservExceptionToBlob;
 import com.example.demo.model.ReservationModel;
+import com.example.demo.model.Response;
 import com.example.demo.producer.Producer;
 
 import reactor.core.publisher.Mono;
@@ -43,7 +44,7 @@ public class TCAGetReservationsDataServiceImplementation {
 	ReservationConsumerEHServiceImpl reservationConsumer;
 	
 	@Async("publisherExecutor")
-	public Future<String> getReservationsData( String hotelData) throws WebClientResponseException, Exception {
+	public Future<String> getReservationsData( String hotelData, Response res) throws WebClientResponseException, Exception {
 		long before = System.currentTimeMillis(); 
 		
 		WebClient webClient = WebClient.builder().baseUrl("https://cs-lab.amr.innsist.tca-ss.com/api").build();
@@ -77,11 +78,7 @@ public class TCAGetReservationsDataServiceImplementation {
 			jsonObj.put(BRANDCODE, (String) parsedJsonObject.get(BRANDCODE));
 			jsonObj.put(HOTELCODE, (String) parsedJsonObject.get(HOTELCODE));
 			
-			//if(responseEntity.getBody() == null || responseEntity.getStatusCodeValue() == 500 || responseEntity.getStatusCodeValue() == 400) {
-				if(responseEntity.getBody() == null ) {
-				//jsonObj.put(RESERVATIONDATA, " ");
-				jsonObj=readReservationDataFromLocalFile(jsonObj);
-			}else {
+			if(responseEntity.getBody() != null ) {
 				
 				jsonObj.put(RESERVATIONDATA, responseEntity.getBody());
 			}
@@ -107,8 +104,9 @@ public class TCAGetReservationsDataServiceImplementation {
 			return new AsyncResult<String>(null);
 		}catch (Exception e) {
 			if (e.getCause() instanceof WebClientResponseException) {
-
+                res.setError(true);
 				WebClientResponseException cause = (WebClientResponseException) e.getCause();
+				res.setResponseMessage(cause.getResponseBodyAsString());
 				System.out.println(cause.getResponseBodyAsString());
 				System.out.println(cause.getMostSpecificCause());
 				System.out.println(cause.getMessage());
@@ -119,7 +117,9 @@ public class TCAGetReservationsDataServiceImplementation {
 				return new AsyncResult<String>(null);
 				
 			} else if (e.getCause() instanceof WebClientRequestException) {
+				res.setError(true);
 				WebClientRequestException cause = (WebClientRequestException) e.getCause();
+				res.setResponseMessage(cause.getMessage());
 				System.out.println(cause.getRootCause());
 				System.out.println(cause.getMostSpecificCause());
 				System.out.println(cause.getMessage());
@@ -131,6 +131,7 @@ public class TCAGetReservationsDataServiceImplementation {
 				return new AsyncResult<String>(null);
 
 			} else {
+				res.setError(true);
 
 				System.out.println(e.getLocalizedMessage());
 				System.out.println(e.getMessage());

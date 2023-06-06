@@ -15,6 +15,7 @@ import org.springframework.web.util.UriBuilder;
 import com.azure.messaging.eventhubs.EventData;
 import com.azure.messaging.eventhubs.EventHubClientBuilder;
 import com.azure.messaging.eventhubs.EventHubProducerClient;
+import com.example.demo.model.Response;
 import com.example.demo.producer.Producer;
 import com.example.demo.service.TCAGetReservationsDataService;
 
@@ -35,20 +36,21 @@ public class TCAReservationsDataService {
 	static List<EventData> eventDataList = new ArrayList<>();
 	
     
-	public String getReservationsData( String hotelData) throws Exception {
-		
+	public String getReservationsData( String hotelData, Response res) throws Exception {
+		int totalEventsCounter=0;
 		long before = System.currentTimeMillis();
 		
 		Collection<Future<String>> futures = new ArrayList<Future<String>>();
 		List<String> listOfHotelData = hotelData.lines().collect(Collectors.toList());
 
 		for (String data : listOfHotelData) {
-			futures.add(tcaSer.getReservationsData( data));
+			futures.add(tcaSer.getReservationsData( data, res));
 		}
 		
 		for (Future<String> future : futures) {
 	        String eventData = future.get();
 	        if(eventData != null) {
+	        	totalEventsCounter= totalEventsCounter+1;
 	        	System.out.println(eventData);
 	        }
 	    }
@@ -59,12 +61,13 @@ public class TCAReservationsDataService {
 		String reservationTime = "Time it took for reservation data of all Hotel Data to be published to event hub: " + (after - before) / 1000.0 + " seconds.\n";
 	    System.out.println(reservationTime);*/
 	    
-	    String response = reservationConsumer.consumeHotelData(TCALoginServiceImplementation.accessToken, listOfHotelData.size());
+	    String response = reservationConsumer.consumeHotelData(TCALoginServiceImplementation.accessToken, totalEventsCounter);
 	    
 	    long after = System.currentTimeMillis(); 
 	    String reservationTime = "Time it took for reservation data of all Hotel Data to be published to event hub: " + (after - before) / 1000.0 + " seconds.\n";
 	    
-	    return response+ reservationTime;
+	   return response+ reservationTime;
+	   // return  reservationTime;
 	
 	}
 
